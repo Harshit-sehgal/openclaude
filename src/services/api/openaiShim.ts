@@ -656,10 +656,20 @@ class OpenAIShimMessages {
       messages: openaiMessages,
       stream: params.stream ?? false,
     }
-    if (params.max_tokens !== undefined) {
-      body.max_completion_tokens = params.max_tokens
-    } else if ((params as Record<string, unknown>).max_completion_tokens !== undefined) {
-      body.max_completion_tokens = (params as Record<string, unknown>).max_completion_tokens
+    // Convert max_tokens to max_completion_tokens for OpenAI API compatibility.
+    // Azure OpenAI requires max_completion_tokens and does not accept max_tokens.
+    // Ensure max_tokens is a valid positive number before using it.
+    const maxTokensValue = typeof params.max_tokens === 'number' && params.max_tokens > 0
+      ? params.max_tokens
+      : undefined
+    const maxCompletionTokensValue = typeof (params as Record<string, unknown>).max_completion_tokens === 'number'
+      ? (params as Record<string, unknown>).max_completion_tokens as number
+      : undefined
+
+    if (maxTokensValue !== undefined) {
+      body.max_completion_tokens = maxTokensValue
+    } else if (maxCompletionTokensValue !== undefined) {
+      body.max_completion_tokens = maxCompletionTokensValue
     }
 
     if (params.stream) {
