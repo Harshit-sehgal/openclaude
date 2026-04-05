@@ -129,7 +129,7 @@ export async function tmuxLoadBuffer(text: string): Promise<boolean> {
  * Local (no SSH_CONNECTION): also shell out to a native clipboard utility.
  * OSC 52 and tmux -w both depend on terminal settings — iTerm2 disables
  * OSC 52 by default, VS Code shows a permission prompt on first use. Native
- * utilities (pbcopy/wl-copy/xclip/xsel/clip.exe) always work locally. Over
+ * utilities (pbcopy/wl-copy/xclip/xsel/PowerShell Set-Clipboard) always work locally. Over
  * SSH these would write to the remote clipboard — OSC 52 is the right path there.
  *
  * Returns the sequence for the caller to write to stdout (raw OSC 52
@@ -211,9 +211,18 @@ function copyNative(text: string): void {
       return
     }
     case 'win32':
-      // clip.exe is always available on Windows. Unicode handling is
-      // imperfect (system locale encoding) but good enough for a fallback.
-      void execFileNoThrow('clip', [], opts)
+      // PowerShell's Set-Clipboard preserves Unicode text more reliably than
+      // clip.exe, which can mangle non-ASCII text under some Windows locales.
+      void execFileNoThrow(
+        'powershell',
+        [
+          '-NoProfile',
+          '-NonInteractive',
+          '-Command',
+          '$text = [Console]::In.ReadToEnd(); Set-Clipboard -Value $text',
+        ],
+        opts,
+      )
       return
   }
 }
